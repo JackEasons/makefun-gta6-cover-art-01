@@ -7,6 +7,12 @@
 // default title to the original "NEON TIDE" — on top of v3's Midnight
 // Vice grade, character-led hero sample, halftone title band and two-line
 // titles written as "NEON / TIDE".
+// v5: the title grows to about seven tenths of the poster width, the title
+// fade hugs the title block so the right-hand portraits stay bright, each
+// cast portrait gets its own cinematic light, the role tags grow a gold
+// base, the quote bar rotates three press quotes with the colour grade,
+// and the build fails out loud when a screenshot tops the scorer's
+// 256 KiB cap instead of handing in a doomed entry.
 // files a desktop browser loads offline (app/index.html and its ES modules,
 // the Anton font and the sample photos under app/, no library and no
 // network request). This program hands the entry in: it copies app/ and
@@ -67,6 +73,18 @@ const shotFiles = existsSync(join(outDir, 'screenshots'))
   : [];
 const appFiles = countFiles(join(outDir, 'app'));
 const biggestShot = shotFiles.reduce((m, f) => Math.max(m, statSync(join(outDir, 'screenshots', f)).size), 0);
+
+// The scorer refuses an entry with a screenshot over 256 KiB, so fail
+// the build out loud here instead of handing in a doomed entry.
+if (biggestShot > 262144) {
+  throw new Error(`screenshot over the 256 KiB cap: ${biggestShot} bytes`);
+}
+
+// Name every screenshot in the summary, so a missing or renamed shot
+// shows up without opening the output directory.
+for (const f of shotFiles) {
+  console.log(`  shot ${f}: ${statSync(join(outDir, 'screenshots', f)).size} bytes`);
+}
 // The cast grid's seven portraits are the samples that matter most: say
 // how many sample photos the run picked up, so a missing portrait shows.
 const sampleDir = join(outDir, 'app', 'samples');

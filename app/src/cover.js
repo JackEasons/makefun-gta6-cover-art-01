@@ -12,6 +12,12 @@
 // handwritten-style subtitle below it. The default title is the original
 // "NEON TIDE" — no Rockstar city name anywhere on the cover now.
 // A caption written as "NEON / TIDE" stacks onto two lines.
+//
+// v5: the title grows to about seven tenths of the poster width, the
+// title fade hugs the title block so the right-hand portraits stay
+// bright, each cast portrait gets its own cinematic light, the role
+// tags grow a gold base, and the quote bar rotates three press quotes
+// with the colour grade.
 
 export const GRADES = {
   sunset: {
@@ -66,6 +72,17 @@ export const CAST = [
   { file: 'boss.jpg', role: 'THE BOSS', label: 'Rooftop Boss' },
   { file: 'lookout.jpg', role: 'THE LOOKOUT', label: 'Rooftop Lookout' },
 ];
+
+/** Cinematic light per cast member, keyed by role: a tinted wash laid over that portrait only, so no two panels share one flat grade. Each wash runs from the member's key side and fades across the panel. */
+export const CAST_LIGHT = {
+  'THE DRIVER': { from: 'rgba(255, 122, 61, 0.38)', to: 'rgba(255, 46, 136, 0.08)' },
+  'THE FIXER': { from: 'rgba(0, 213, 255, 0.32)', to: 'rgba(255, 255, 255, 0.05)' },
+  'THE MECHANIC': { from: 'rgba(255, 92, 225, 0.36)', to: 'rgba(0, 213, 255, 0.10)' },
+  'THE CAPTAIN': { from: 'rgba(255, 196, 107, 0.38)', to: 'rgba(255, 122, 61, 0.08)' },
+  'THE RIDER': { from: 'rgba(45, 212, 196, 0.34)', to: 'rgba(20, 8, 31, 0.12)' },
+  'THE BOSS': { from: 'rgba(255, 46, 136, 0.38)', to: 'rgba(255, 122, 61, 0.06)' },
+  'THE LOOKOUT': { from: 'rgba(123, 77, 255, 0.38)', to: 'rgba(0, 213, 255, 0.08)' },
+};
 
 export const LAYOUTS = {
   cast: { label: 'Cast grid · 7 panels', panels: 7 },
@@ -269,7 +286,7 @@ function paintTitle(ctx, title, subtitle, tagline, grade, w, h) {
   const clean = title.trim().toUpperCase();
   if (!clean) return;
 
-  // Grow the type until the widest line spans about two thirds of the
+  // Grow the type until the widest line spans about seven tenths of the
   // poster, capped so one line never outgrows the band. One-line titles
   // get the biggest letters; stacked titles grow to the same cap.
   const sizeCap = Math.round(h * 0.25);
@@ -280,7 +297,7 @@ function paintTitle(ctx, title, subtitle, tagline, grade, w, h) {
     ctx.font = `${size}px Anton, sans-serif`;
     lines = wrapCaption(ctx, clean, maxW);
     widest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
-    if (widest >= maxW * 0.66 || (lines.length > 1 && widest >= maxW * 0.5) || size >= sizeCap) break;
+    if (widest >= maxW * 0.72 || (lines.length > 1 && widest >= maxW * 0.5) || size >= sizeCap) break;
     const next = size + 4;
     ctx.font = `${next}px Anton, sans-serif`;
     const nextWidest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
@@ -314,10 +331,18 @@ function paintTitle(ctx, title, subtitle, tagline, grade, w, h) {
   const fadeTop = tagY - tagSize * 2.4;
   const fade = ctx.createLinearGradient(0, fadeTop, 0, h - billH);
   fade.addColorStop(0, 'rgba(10, 2, 20, 0)');
-  fade.addColorStop(0.5, 'rgba(10, 2, 20, 0.62)');
-  fade.addColorStop(1, 'rgba(10, 2, 20, 0.88)');
+  // Kept lighter than a full blackout on purpose: the bottom-row faces
+  // sit under this fade, and at full strength they drowned in it.
+  fade.addColorStop(0.5, 'rgba(10, 2, 20, 0.55)');
+  fade.addColorStop(1, 'rgba(10, 2, 20, 0.80)');
+  // The fade hugs the title block instead of washing the whole poster:
+  // the right-hand portraits used to drown under a full-width fade they
+  // did not need. It spans the widest of the title lines and a rough
+  // measure of the letterspaced tagline, plus a margin on each side.
+  const tagChars = (tagline || '').trim().length;
+  const fadeW = Math.min(w, margin + Math.max(widest, tagChars * tagSize * 0.95) + margin * 2);
   ctx.fillStyle = fade;
-  ctx.fillRect(0, fadeTop, w, h - billH - fadeTop);
+  ctx.fillRect(0, fadeTop, fadeW, h - billH - fadeTop);
 
   // Tagline in letterspaced caps, the grade's accent colour. On narrow
   // posters a long tagline would run off the right edge, so shrink it
@@ -402,8 +427,15 @@ function seeded(seed) {
   };
 }
 
-/** The quote bar across the top: five stars, a press quote and VOL. 1. */
-function paintQuoteBar(ctx, grade, w, h) {
+/** Press quotes that rotate with the colour grade, so the quote bar never repeats the same line on every poster. The grade's index in GRADES picks the quote. */
+export const PRESS_QUOTES = [
+  { text: '“A sunset heist for the ages”', outlet: 'COASTLINE CHRONICLE' },
+  { text: '“Seven faces, one perfect getaway”', outlet: 'NEON WEEKLY' },
+  { text: '“The coast has never looked this good”', outlet: 'SUNSET HERALD' },
+];
+
+/** The quote bar across the top: five stars, a press quote and VOL. 1. The quote rotates with the grade, so each colour grade carries its own press line. */
+function paintQuoteBar(ctx, grade, gradeKey, w, h) {
   const barH = Math.round(h * 0.052);
   ctx.fillStyle = 'rgba(10, 2, 20, 0.8)';
   ctx.fillRect(0, 0, w, barH);
@@ -416,13 +448,17 @@ function paintQuoteBar(ctx, grade, w, h) {
   ctx.fillStyle = '#ffc46b';
   ctx.fillText('★★★★★', margin, cy);
   const starsW = ctx.measureText('★★★★★').width;
+  // The grade's index in GRADES picks the quote, so the same grade
+  // always prints the same press line and the run stays deterministic.
+  const quoteIndex = Math.max(0, Object.keys(GRADES).indexOf(gradeKey)) % PRESS_QUOTES.length;
+  const quote = PRESS_QUOTES[quoteIndex];
   ctx.font = `italic ${size}px Georgia, serif`;
   ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-  ctx.fillText('“A sunset heist for the ages”', margin + starsW + size * 0.8, cy);
-  const quoteW = ctx.measureText('“A sunset heist for the ages”').width;
+  ctx.fillText(quote.text, margin + starsW + size * 0.8, cy);
+  const quoteW = ctx.measureText(quote.text).width;
   ctx.font = `${Math.round(size * 0.85)}px Anton, sans-serif`;
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('— COASTLINE CHRONICLE', margin + starsW + size * 0.8 + quoteW + size * 0.6, cy);
+  ctx.fillText(`— ${quote.outlet}`, margin + starsW + size * 0.8 + quoteW + size * 0.6, cy);
   ctx.font = `${Math.round(size * 0.95)}px Anton, sans-serif`;
   ctx.fillStyle = grade.accent;
   ctx.textAlign = 'right';
@@ -492,6 +528,12 @@ function paintBilling(ctx, title, grade, w, h) {
   ctx.fillStyle = grade.accent;
   ctx.textAlign = 'left';
   ctx.fillText('COMING SOON', margin, y0 + billH * 0.72);
+  // A production credit in the middle of the billing row, classic
+  // poster furniture between the release line and the barcode.
+  ctx.font = `${size}px Anton, sans-serif`;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.textAlign = 'center';
+  ctx.fillText('A NEON TIDE PRODUCTION', w / 2, y0 + billH * 0.72);
   // A barcode drawn from the title, so the same title always prints the same bars.
   let seed = 7;
   for (const ch of title) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
@@ -510,21 +552,46 @@ function paintBilling(ctx, title, grade, w, h) {
   }
 }
 
-/** A role tag on a cast panel: a dark chip with the role in Anton. */
-function paintRoleTag(ctx, panel, topPad) {
-  const size = Math.max(13, Math.min(30, Math.round(panel.h * 0.14)));
+/** A role tag on a cast panel: a dark chip with the role in Anton. `place` is 'tl' (top-left, the usual spot) or 'br' (bottom-right, for bottom-row panels whose top sits under the title block). */
+function paintRoleTag(ctx, panel, topPad, place) {
+  const size = Math.max(13, Math.min(32, Math.round(panel.h * 0.17)));
   ctx.font = `${size}px Anton, sans-serif`;
   const tw = ctx.measureText(panel.role).width;
   const padX = Math.round(size * 0.55);
   const padY = Math.round(size * 0.4);
-  const bx = panel.x + Math.max(6, Math.round(panel.w * 0.025));
-  const by = panel.y + topPad;
+  const chipW = tw + padX * 2;
+  const chipH = size + padY * 2;
+  const bx = place === 'br'
+    ? panel.x + panel.w - chipW - Math.max(6, Math.round(panel.w * 0.025))
+    : panel.x + Math.max(6, Math.round(panel.w * 0.025));
+  const by = place === 'br' ? panel.y + panel.h - chipH - 8 : panel.y + topPad;
   ctx.fillStyle = 'rgba(10, 2, 20, 0.88)';
   ctx.fillRect(bx, by, tw + padX * 2, size + padY * 2);
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   ctx.fillText(panel.role, bx + padX, by + padY + size * 0.78);
+  // A gold base under the chip, so the role reads as a stamped tag
+  // instead of a plain dark box.
+  ctx.fillStyle = '#ffc46b';
+  ctx.fillRect(bx, by + size + padY * 2 - Math.max(3, Math.round(size * 0.14)), tw + padX * 2, Math.max(3, Math.round(size * 0.14)));
+}
+
+/** One cast portrait's cinematic light: its tinted wash, laid over the photo in soft light so the face keeps its own colours while the panel takes a mood of its own. */
+function paintCastLight(ctx, panel, role) {
+  const light = CAST_LIGHT[role];
+  if (!light) return;
+  const g = ctx.createLinearGradient(panel.x, panel.y, panel.x + panel.w, panel.y + panel.h);
+  g.addColorStop(0, light.from);
+  g.addColorStop(1, light.to);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(panel.x, panel.y, panel.w, panel.h);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'soft-light';
+  ctx.fillStyle = g;
+  ctx.fillRect(panel.x, panel.y, panel.w, panel.h);
+  ctx.restore();
 }
 
 /** Paint the whole poster onto `canvas` from `state`. */
@@ -561,6 +628,10 @@ export function paintPoster(canvas, state) {
       ctx.textAlign = 'center';
       ctx.fillText('ADD A PHOTO', panel.x + panel.w / 2, panel.y + panel.h / 2);
     }
+    // Each cast portrait gets its own cinematic light, laid over the
+    // photo and under the panel border, so the seven faces read as
+    // seven different moments instead of one flat grade.
+    if (isCast && panel.role) paintCastLight(ctx, panel, panel.role);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = Math.max(2, gap * 0.35);
     if (panel.poly) {
@@ -598,19 +669,30 @@ export function paintPoster(canvas, state) {
   // panel's corner, and the tag box paints cleanly over them instead of
   // the seal clipping the tag's last letters. It stays above the quote
   // bar so its gold is never dimmed by the bar's dark strip.
-  paintQuoteBar(ctx, grade, w, h);
+  paintQuoteBar(ctx, grade, state.grade, w, h);
   paintSeal(ctx, grade, w, h);
-  // Role tags stay crisp on top of the wash: top of each panel, dropped
-  // below the quote bar on the top row.
+  paintBilling(ctx, state.title, grade, w, h);
+  paintTitle(ctx, state.title, state.subtitle, state.tagline || '', grade, w, h);
+  // Role tags paint last, on top of the title block as well as the wash.
+  // Bottom-row tags go to the bottom-right corner on landscape and
+  // square posters: their top-left spot sits dead-centre on the title
+  // (the BOSS tag used to cover the "TI" of TIDE). In portrait the
+  // title fills the whole lower-left, so bottom-row tags there keep
+  // the top-left spot and read as edge labels instead.
   if (isCast) {
     const quoteH = Math.round(h * 0.052);
     const edge = Math.round(Math.min(w, h) * 0.02);
+    const innerBottom = h - edge - Math.round(h * 0.085);
     panels.forEach((panel) => {
-      if (panel.role) paintRoleTag(ctx, panel, panel.y <= edge + 1 ? quoteH + 8 : 8);
+      if (!panel.role) return;
+      // The hero panel also reaches the bottom edge, so it needs the
+      // extra guard: only a side-grid cell that starts below the top
+      // edge and ends on the bottom edge counts as the bottom row.
+      const bottomRow = panel.y > edge + 1 && panel.y + panel.h >= innerBottom - 1;
+      const place = bottomRow && w >= h ? 'br' : 'tl';
+      paintRoleTag(ctx, panel, panel.y <= edge + 1 ? quoteH + 8 : 8, place);
     });
   }
-  paintBilling(ctx, state.title, grade, w, h);
-  paintTitle(ctx, state.title, state.subtitle, state.tagline || '', grade, w, h);
 }
 
 /** A fresh canvas with the poster rendered at exactly w×h. */
