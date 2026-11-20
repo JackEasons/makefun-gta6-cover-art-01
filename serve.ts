@@ -72,4 +72,5 @@ createServer((request, response) => {
 }).listen(port, '127.0.0.1', () => {
   console.log(`app/ is on http://localhost:${port}`);
   console.log(`try the editor at http://localhost:${port}/ and a cover at http://localhost:${port}/?shot=cover`);
+  console.log(`the five grades are served from app/src/cover.js, the samples from app/samples/`);
 });

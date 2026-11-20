@@ -1,6 +1,7 @@
 // Vice City Cover Studio: a gta6-cover-art-01 entry (Node 22, standard
-// library only). v2 adds a fifth layout (diagonal split, clipped to
-// polygons in the poster engine) and a fourth grade (Gold Hour).
+// library only). v3 adds a fifth grade (Midnight Vice), a character-led
+// hero sample photo, a halftone title band and two-line titles written
+// as "VICE / CITY", on top of v2's diagonal split and Gold Hour grade.
 // files a desktop browser loads offline (app/index.html and its ES modules,
 // the Anton font and the sample photos under app/, no library and no
 // network request). This program hands the entry in: it copies app/ and
@@ -42,11 +43,23 @@ writeFileSync(
   }),
 );
 
+/** Count the files under a directory, so the build summary can say how big the app is. */
+function countFiles(dir: string): number {
+  let total = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    total += entry.isDirectory() ? countFiles(join(dir, entry.name)) : 1;
+  }
+  return total;
+}
+
 // A short build summary on stdout, so a run's result is visible without
 // opening the dossier: the dossier size is the one number that moves
-// when the app or the screenshots change.
+// when the app or the screenshots change, and the app file count says
+// whether a run picked up the new samples and grades.
 const dossierBytes = statSync(join(outDir, 'dossier.json')).size;
 const shotFiles = existsSync(join(outDir, 'screenshots'))
   ? readdirSync(join(outDir, 'screenshots')).filter((f) => /\.(png|jpe?g)$/i.test(f))
   : [];
-console.log(`wrote ${join(outDir, 'dossier.json')} (${dossierBytes} bytes, ${shotFiles.length} screenshots)`);
+const appFiles = countFiles(join(outDir, 'app'));
+const biggestShot = shotFiles.reduce((m, f) => Math.max(m, statSync(join(outDir, 'screenshots', f)).size), 0);
+console.log(`wrote ${join(outDir, 'dossier.json')} (${dossierBytes} bytes, ${shotFiles.length} screenshots, biggest ${biggestShot} bytes, ${appFiles} app files)`);

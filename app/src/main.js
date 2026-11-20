@@ -6,6 +6,8 @@ import { GRADES, LAYOUTS, SIZES, exportPoster, paintPoster, panelPhotos, posterP
 import { runShot } from './shots.js';
 
 const SAMPLES = [
+  { file: 'hero-driver.jpg', label: 'Sunset Driver' },
+  { file: 'neon-alley.jpg', label: 'Neon Street' },
   { file: 'sunset-boulevard.jpg', label: 'Sunset Boulevard' },
   { file: 'beach-pier.jpg', label: 'Beach Pier' },
   { file: 'skyline.jpg', label: 'Skyline' },
@@ -218,7 +220,7 @@ function buildPickers() {
     btn.className = `chip${state.grade === key ? ' on' : ''}`;
     btn.style.setProperty('--swatch', def.band);
     btn.textContent = def.label;
-    if (key === 'gold') btn.dataset.new = '1';
+    if (key === 'midnight') btn.dataset.new = '1';
     btn.addEventListener('click', () => {
       state.grade = key;
       buildPickers();
@@ -336,14 +338,14 @@ async function boot() {
     await document.fonts.load('100px Anton');
   } catch (e) { /* lettering falls back to a heavy sans */ }
   if (shot) {
-    await runShot(shot, query, async (files, text, sub, layout, grade, size, zoom) => {
+    await runShot(shot, query, async (files, text, sub, layout, grade, size, zoom, fy) => {
       state.layout = layout;
       state.grade = grade;
       state.title = text;
       state.subtitle = sub;
       state.size = size;
       for (let i = 0; i < files.length; i++) {
-        state.photos[i] = { img: await loadImage(`samples/${files[i]}`), name: files[i], zoom: zoom || 1, fx: 0.5, fy: 0.5 };
+        state.photos[i] = { img: await loadImage(`samples/${files[i]}`), name: files[i], zoom: zoom || 1, fx: 0.5, fy: fy ?? 0.5 };
       }
       buildPickers();
       buildSlots();
