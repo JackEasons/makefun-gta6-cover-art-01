@@ -73,4 +73,5 @@ createServer((request, response) => {
   console.log(`app/ is on http://localhost:${port}`);
   console.log(`try the editor at http://localhost:${port}/ and a cover at http://localhost:${port}/?shot=cover`);
   console.log(`the five grades are served from app/src/cover.js, the samples from app/samples/`);
+  console.log(`the cast grid's seven portraits live in app/samples/ (hero-driver, fixer, mechanic, captain, rider, boss, lookout)`);
 });

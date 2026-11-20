@@ -49,6 +49,7 @@ html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--in
 }
 .group h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
 .hint { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+.cast-note { margin: 0 0 10px; color: var(--gold); font-size: 12px; }
 .hint-inline { margin: -4px 0 10px; color: var(--muted); font-size: 12px; font-weight: 400; }
 
 #slots { display: flex; flex-direction: column; gap: 10px; }

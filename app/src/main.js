@@ -2,11 +2,17 @@
 // drag-to-pan on the preview, zoom sliders and PNG export. A `?shot=`
 // query sets up a fixed scene for a screenshot instead (see shots.js).
 
-import { GRADES, LAYOUTS, SIZES, exportPoster, paintPoster, panelPhotos, posterPanels } from './cover.js';
+import { CAST, GRADES, LAYOUTS, SIZES, exportPoster, paintPoster, panelPhotos, posterPanels } from './cover.js';
 import { runShot } from './shots.js';
 
 const SAMPLES = [
   { file: 'hero-driver.jpg', label: 'Sunset Driver' },
+  { file: 'fixer.jpg', label: 'Silver Fixer' },
+  { file: 'mechanic.jpg', label: 'Neon Mechanic' },
+  { file: 'captain.jpg', label: 'Harbor Captain' },
+  { file: 'rider.jpg', label: 'Night Rider' },
+  { file: 'boss.jpg', label: 'Rooftop Boss' },
+  { file: 'lookout.jpg', label: 'Rooftop Lookout' },
   { file: 'neon-alley.jpg', label: 'Neon Street' },
   { file: 'sunset-boulevard.jpg', label: 'Sunset Boulevard' },
   { file: 'beach-pier.jpg', label: 'Beach Pier' },
@@ -16,12 +22,14 @@ const SAMPLES = [
 ];
 
 const state = {
-  layout: 'triptych',
-  grade: 'sunset',
-  title: 'VICE NIGHTS',
-  subtitle: 'THREE FRAMES, ONE CITY',
+  layout: 'cast',
+  grade: 'midnight',
+  title: 'NEON TIDE',
+  subtitle: 'one last summer on the coast',
+  tagline: 'SEVEN FRIENDS · ONE COAST · NO WAY OUT',
   size: '1920x1080',
   photos: [null, null, null],
+  cast: [],
   active: 0,
 };
 
@@ -83,6 +91,24 @@ async function loadSample(i, file) {
   } catch (e) {
     say(`Could not load ${file}.`);
   }
+}
+
+/** Load the seven cast portraits for the cast grid, each with its role. */
+async function loadCast() {
+  if (state.cast.length === CAST.length) return;
+  const loaded = [];
+  for (const member of CAST) {
+    try {
+      const img = await loadImage(`samples/${member.file}`);
+      // fy 0.35 keeps a portrait face in a wide panel: the faces sit in
+      // the upper third of these close-ups.
+      loaded.push({ img, name: member.file, role: member.role, zoom: 1, fx: 0.5, fy: 0.35 });
+    } catch (e) {
+      say(`Could not load ${member.file}.`);
+    }
+  }
+  state.cast = loaded;
+  redraw();
 }
 
 function buildSlots() {
@@ -205,9 +231,10 @@ function buildPickers() {
     btn.type = 'button';
     btn.className = `chip${state.layout === key ? ' on' : ''}`;
     btn.textContent = def.label;
-    if (key === 'diagonal') btn.dataset.new = '1';
+    if (key === 'cast') btn.dataset.new = '1';
     btn.addEventListener('click', () => {
       state.layout = key;
+      if (key === 'cast') loadCast();
       buildPickers();
       redraw();
     });
@@ -260,7 +287,8 @@ function panelAt(clientX, clientY) {
   const x = ((clientX - rect.left) / rect.width) * preview.width;
   const y = ((clientY - rect.top) / rect.height) * preview.height;
   const panels = posterPanels(state.layout, preview.width, preview.height);
-  const assignment = panelPhotos(state.layout, state.photos.length);
+  const source = state.layout === 'cast' ? state.cast : state.photos;
+  const assignment = panelPhotos(state.layout, source.length);
   for (let i = 0; i < panels.length; i++) {
     const p = panels[i];
     const inside = p.poly
@@ -277,7 +305,7 @@ let drag = null;
 preview.addEventListener('pointerdown', (e) => {
   const hit = panelAt(e.clientX, e.clientY);
   if (!hit || hit.photoIndex < 0) return;
-  const photo = state.photos[hit.photoIndex];
+  const photo = (state.layout === 'cast' ? state.cast : state.photos)[hit.photoIndex];
   if (!photo) return;
   state.active = hit.photoIndex;
   buildSlots();
@@ -305,6 +333,10 @@ document.getElementById('subtitle').addEventListener('input', (e) => {
   state.subtitle = e.target.value;
   redraw();
 });
+document.getElementById('tagline').addEventListener('input', (e) => {
+  state.tagline = e.target.value;
+  redraw();
+});
 
 document.getElementById('export').addEventListener('click', () => {
   const size = currentSize();
@@ -316,9 +348,9 @@ document.getElementById('export').addEventListener('click', () => {
     }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `vice-city-cover-${size.w}x${size.h}.png`;
+    a.download = `neon-tide-cover-${size.w}x${size.h}.png`;
     a.click();
-    say(`Saved vice-city-cover-${size.w}x${size.h}.png`);
+    say(`Saved neon-tide-cover-${size.w}x${size.h}.png`);
   }, 'image/png');
 });
 
@@ -338,14 +370,23 @@ async function boot() {
     await document.fonts.load('100px Anton');
   } catch (e) { /* lettering falls back to a heavy sans */ }
   if (shot) {
-    await runShot(shot, query, async (files, text, sub, layout, grade, size, zoom, fy) => {
+    await runShot(shot, query, async (files, text, sub, layout, grade, size, zoom, fy, tagline) => {
       state.layout = layout;
       state.grade = grade;
       state.title = text;
       state.subtitle = sub;
+      state.tagline = tagline;
       state.size = size;
-      for (let i = 0; i < files.length; i++) {
-        state.photos[i] = { img: await loadImage(`samples/${files[i]}`), name: files[i], zoom: zoom || 1, fx: 0.5, fy: fy ?? 0.5 };
+      if (layout === 'cast') {
+        state.cast = [];
+        for (const file of files) {
+          const member = CAST.find((c) => c.file === file);
+          state.cast.push({ img: await loadImage(`samples/${file}`), name: file, role: member ? member.role : '', zoom: zoom || 1, fx: 0.5, fy: fy ?? 0.35 });
+        }
+      } else {
+        for (let i = 0; i < files.length; i++) {
+          state.photos[i] = { img: await loadImage(`samples/${files[i]}`), name: files[i], zoom: zoom || 1, fx: 0.5, fy: fy ?? 0.5 };
+        }
       }
       buildPickers();
       buildSlots();
@@ -354,7 +395,7 @@ async function boot() {
     if (shot === 'cover') document.body.classList.add('shot-cover');
     requestAnimationFrame(() => requestAnimationFrame(() => { window.__shotReady = true; }));
   } else {
-    await loadSample(0, 'sunset-boulevard.jpg');
+    await loadCast();
     redraw();
   }
   document.fonts.ready.then(() => redraw());

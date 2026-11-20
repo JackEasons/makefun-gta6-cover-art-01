@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vice City Cover Studio</title>
+<title>Neon Tide Cover Studio</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <header class="masthead">
   <div>
-    <h1>VICE CITY <span>COVER STUDIO</span></h1>
-    <p>Five layouts, five grades, three photos — one poster. Drag a panel to reframe it, pick a grade, export the cover.</p>
+    <h1>NEON TIDE <span>COVER STUDIO</span></h1>
+    <p>Six layouts, five grades, seven characters — one poster. Drag a panel to reframe it, pick a grade, export the cover.</p>
   </div>
   <p class="made">100% offline · your photos never leave this browser</p>
 </header>
@@ -23,6 +23,7 @@
     </div>
     <div class="group">
       <h2>2 · Layout</h2>
+      <p class="cast-note">Cast grid uses the seven character portraits — each panel carries its role.</p>
       <div id="layouts" class="chips" role="group" aria-label="Layout"></div>
     </div>
     <div class="group">
@@ -32,12 +33,15 @@
     <div class="group">
       <h2>4 · Caption</h2>
       <label>Title
-        <input id="title" type="text" maxlength="28" value="VICE NIGHTS">
+        <input id="title" type="text" maxlength="28" value="NEON TIDE">
       </label>
       <label>Subtitle
-        <input id="subtitle" type="text" maxlength="48" value="THREE FRAMES, ONE CITY">
+        <input id="subtitle" type="text" maxlength="48" value="one last summer on the coast">
       </label>
-      <p class="hint-inline">Tip: write the title as WORD / WORD to stack it on two lines.</p>
+      <label>Tagline
+        <input id="tagline" type="text" maxlength="60" value="SEVEN FRIENDS · ONE COAST · NO WAY OUT">
+      </label>
+      <p class="hint-inline">Tip: write the title as WORD / WORD to stack it on two lines. The subtitle is drawn in a handwritten style, the tagline in letterspaced caps above the title.</p>
     </div>
     <div class="group">
       <h2>5 · Export size</h2>
@@ -45,7 +49,7 @@
       <button id="export" type="button">Export PNG</button>
       <p id="status" role="status"></p>
     </div>
-    <p class="credit">Lettering: Anton (SIL Open Font License), shipped with the app. Sample photos were made with an image model; no game artwork is used.</p>
+    <p class="credit">Lettering: Anton (SIL Open Font License), shipped with the app. Sample photos were made with an image model, including the seven original character portraits; no game artwork is used.</p>
   </section>
   <section class="stage" aria-label="Cover preview">
     <canvas id="preview" width="1920" height="1080" aria-label="The cover preview"></canvas>

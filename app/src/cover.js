@@ -5,11 +5,13 @@
 // the lettering is Anton, an OFL font shipped under app/fonts/, and the
 // sample photos are original images made with an image model.
 //
-// v3: a fifth grade (Midnight Vice), a bigger two-line title with a
-// gradient fill, a hard offset shadow and a thicker outline, a halftone
-// dot texture over the title band, and a deeper vignette — the covers
-// read as posters now, not postcards. A caption written as
-// "VICE / CITY" stacks onto two lines.
+// v4: a cast-grid layout (seven character panels with role tags), poster
+// furniture (quote bar, gold BEST CAST seal, billing block with a drawn
+// barcode, COMING SOON), a striped-gradient title grown to about two
+// thirds of the poster width, a letterspaced tagline above it and a
+// handwritten-style subtitle below it. The default title is the original
+// "NEON TIDE" — no Rockstar city name anywhere on the cover now.
+// A caption written as "NEON / TIDE" stacks onto two lines.
 
 export const GRADES = {
   sunset: {
@@ -54,7 +56,19 @@ export const GRADES = {
   },
 };
 
+/** The seven faces of the cast-grid poster: file, role tag and picker label. */
+export const CAST = [
+  { file: 'hero-driver.jpg', role: 'THE DRIVER', label: 'Sunset Driver' },
+  { file: 'fixer.jpg', role: 'THE FIXER', label: 'Silver Fixer' },
+  { file: 'mechanic.jpg', role: 'THE MECHANIC', label: 'Neon Mechanic' },
+  { file: 'captain.jpg', role: 'THE CAPTAIN', label: 'Harbor Captain' },
+  { file: 'rider.jpg', role: 'THE RIDER', label: 'Night Rider' },
+  { file: 'boss.jpg', role: 'THE BOSS', label: 'Rooftop Boss' },
+  { file: 'lookout.jpg', role: 'THE LOOKOUT', label: 'Rooftop Lookout' },
+];
+
 export const LAYOUTS = {
+  cast: { label: 'Cast grid · 7 panels', panels: 7 },
   triptych: { label: 'Triptych · 3 panels', panels: 3 },
   grid: { label: 'Grid · 2 × 2', panels: 4 },
   hero: { label: 'Hero + strip', panels: 3 },
@@ -72,8 +86,49 @@ export const SIZES = {
 export function posterPanels(layout, w, h) {
   const gap = Math.round(Math.min(w, h) * 0.012);
   const edge = Math.round(Math.min(w, h) * 0.02);
+  // The bottom strip is reserved for the billing block on every layout,
+  // so the photos never run into the credits and the barcode.
+  const billH = Math.round(h * 0.085);
   const innerW = w - edge * 2;
-  const innerH = h - edge * 2;
+  const innerH = h - edge * 2 - billH;
+  if (layout === 'cast') {
+    // Seven character panels around one big hero: the hero takes the
+    // left in landscape (or the top in portrait), the other six fill a
+    // 2 x 3 grid beside (or below) it. Each panel carries its role tag.
+    if (w >= h) {
+      const heroW = innerW * 0.44;
+      const sideW = innerW - heroW - gap;
+      const cellW = (sideW - gap) / 2;
+      const cellH = (innerH - gap * 2) / 3;
+      const panels = [{ x: edge, y: edge, w: heroW, h: innerH, role: CAST[0].role }];
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 2; c++) {
+          const i = 1 + r * 2 + c;
+          panels.push({
+            x: edge + heroW + gap + c * (cellW + gap),
+            y: edge + r * (cellH + gap),
+            w: cellW, h: cellH, role: CAST[i].role,
+          });
+        }
+      }
+      return panels;
+    }
+    const heroH = innerH * 0.42;
+    const cellW = (innerW - gap) / 2;
+    const cellH = (innerH - heroH - gap - gap * 2) / 3;
+    const panels = [{ x: edge, y: edge, w: innerW, h: heroH, role: CAST[0].role }];
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 2; c++) {
+        const i = 1 + r * 2 + c;
+        panels.push({
+          x: edge + c * (cellW + gap),
+          y: edge + heroH + gap + r * (cellH + gap),
+          w: cellW, h: cellH, role: CAST[i].role,
+        });
+      }
+    }
+    return panels;
+  }
   if (layout === 'triptych') {
     const pw = (innerW - gap * 2) / 3;
     return [0, 1, 2].map((i) => ({ x: edge + i * (pw + gap), y: edge, w: pw, h: innerH }));
@@ -206,34 +261,101 @@ function wrapCaption(ctx, text, maxWidth) {
   return shown;
 }
 
-/** The bold display lettering: Anton, gradient fill, thick dark outline, hard shadow, slight lean. */
-function paintTitle(ctx, title, subtitle, grade, w, h) {
-  const bandH = h * 0.24;
-  const bandY = h - bandH;
-  const fade = ctx.createLinearGradient(0, bandY - h * 0.12, 0, h);
-  fade.addColorStop(0, 'rgba(10, 2, 20, 0)');
-  fade.addColorStop(0.45, 'rgba(10, 2, 20, 0.72)');
-  fade.addColorStop(1, 'rgba(10, 2, 20, 0.92)');
-  ctx.fillStyle = fade;
-  ctx.fillRect(0, bandY - h * 0.12, w, h - bandY + h * 0.12);
-
+/** The bold display lettering: Anton, striped sunset gradient fill, thick dark outline, hard shadow, slight lean. The tagline sits above the title, the handwritten subtitle below it, and the whole block stops above the billing strip. */
+function paintTitle(ctx, title, subtitle, tagline, grade, w, h) {
+  const billH = Math.round(h * 0.085);
   const margin = w * 0.045;
   const maxW = w - margin * 2;
   const clean = title.trim().toUpperCase();
   if (!clean) return;
 
-  // Grow the type as large as the widest line allows, then draw it.
-  let size = h * 0.175;
+  // Grow the type until the widest line spans about two thirds of the
+  // poster, capped so one line never outgrows the band. One-line titles
+  // get the biggest letters; stacked titles grow to the same cap.
+  const sizeCap = Math.round(h * 0.25);
+  let size = Math.round(h * 0.16);
   let lines = [];
+  let widest = 0;
   for (;;) {
     ctx.font = `${size}px Anton, sans-serif`;
     lines = wrapCaption(ctx, clean, maxW);
-    const widest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
-    if (widest <= maxW || size <= 20) break;
-    size -= 2;
+    widest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+    if (widest >= maxW * 0.66 || (lines.length > 1 && widest >= maxW * 0.5) || size >= sizeCap) break;
+    const next = size + 4;
+    ctx.font = `${next}px Anton, sans-serif`;
+    const nextWidest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+    if (nextWidest > maxW) break;
+    size = next;
   }
+  ctx.font = `${size}px Anton, sans-serif`;
+  lines = wrapCaption(ctx, clean, maxW);
+  widest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+
+  // Safety valve: a stacked title must never eat more than half the poster
+  // height, or the tagline would climb into the quote bar and the title
+  // would bury the whole cast grid. Shrink and re-wrap if it overflows.
+  const maxStack = Math.round(h * 0.5);
+  if (lines.length * size * 1.04 > maxStack) {
+    size = Math.max(24, Math.floor(maxStack / (lines.length * 1.04)));
+    ctx.font = `${size}px Anton, sans-serif`;
+    lines = wrapCaption(ctx, clean, maxW);
+    widest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+  }
+
   const lineH = size * 1.04;
-  let y = h - margin * 0.9 - (lines.length - 1) * lineH;
+  const subSize = Math.max(15, Math.round(size * 0.26));
+  const tagSize = Math.max(12, Math.round(size * 0.15));
+  // Bottom-up stack: billing strip, handwritten subtitle, title lines, tagline.
+  const subY = h - billH - Math.round(margin * 0.45);
+  const titleBottom = subY - subSize * 1.5;
+  const tagY = titleBottom - lines.length * lineH - tagSize * 1.4;
+
+  // The dark fade behind the block, so the letters read over any photo.
+  const fadeTop = tagY - tagSize * 2.4;
+  const fade = ctx.createLinearGradient(0, fadeTop, 0, h - billH);
+  fade.addColorStop(0, 'rgba(10, 2, 20, 0)');
+  fade.addColorStop(0.5, 'rgba(10, 2, 20, 0.62)');
+  fade.addColorStop(1, 'rgba(10, 2, 20, 0.88)');
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, fadeTop, w, h - billH - fadeTop);
+
+  // Tagline in letterspaced caps, the grade's accent colour. On narrow
+  // posters a long tagline would run off the right edge, so shrink it
+  // (font and spacing together) until the spaced line fits the poster.
+  const tag = (tagline || '').trim().toUpperCase();
+  if (tag) {
+    let drawTagSize = tagSize;
+    let drawTagSpacing = Math.round(drawTagSize * 0.3);
+    try { ctx.letterSpacing = '0px'; } catch (e) { /* older canvas */ }
+    while (drawTagSize > 12) {
+      ctx.font = `${drawTagSize}px Anton, sans-serif`;
+      const wTag = ctx.measureText(tag).width + drawTagSpacing * Math.max(0, tag.length - 1);
+      if (wTag <= maxW) break;
+      drawTagSize = Math.max(12, Math.round(drawTagSize * 0.9));
+      drawTagSpacing = Math.round(drawTagSize * 0.3);
+    }
+    ctx.font = `${drawTagSize}px Anton, sans-serif`;
+    try { ctx.letterSpacing = `${drawTagSpacing}px`; } catch (e) { /* older canvas: no letter spacing */ }
+    ctx.fillStyle = grade.accent;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(tag, margin, tagY);
+    try { ctx.letterSpacing = '0px'; } catch (e) { /* reset */ }
+  }
+
+  // Title lines with a striped sunset fill: pink, orange and gold bands
+  // across the widest line, under a hard offset shadow and a thick outline.
+  // The font is set here on purpose: the tagline above set it to its own
+  // small size, and the title must come back to the big display size.
+  ctx.font = `${size}px Anton, sans-serif`;
+  const stripes = ctx.createLinearGradient(margin, 0, margin + widest, 0);
+  stripes.addColorStop(0, '#ffd23e');
+  stripes.addColorStop(0.22, '#ff7a3d');
+  stripes.addColorStop(0.45, '#ff2e88');
+  stripes.addColorStop(0.68, '#ff7a3d');
+  stripes.addColorStop(0.86, '#ffb347');
+  stripes.addColorStop(1, '#ff2e88');
+  let y = titleBottom - (lines.length - 1) * lineH;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   for (const lineText of lines) {
@@ -241,17 +363,12 @@ function paintTitle(ctx, title, subtitle, grade, w, h) {
     ctx.translate(margin, y);
     ctx.transform(1, 0, -0.07, 1, 0, 0);
     ctx.lineJoin = 'round';
-    // Hard offset print shadow first, so the letters lift off the photo.
     ctx.fillStyle = 'rgba(12, 2, 24, 0.85)';
     ctx.fillText(lineText, size * 0.045, size * 0.06);
-    // Thick dark outline, then a white-to-blush gradient fill with a neon glow.
     ctx.strokeStyle = 'rgba(16, 2, 28, 0.95)';
     ctx.lineWidth = Math.max(5, size * 0.18);
     ctx.strokeText(lineText, 0, 0);
-    const fill = ctx.createLinearGradient(0, -size * 0.9, 0, size * 0.1);
-    fill.addColorStop(0, '#ffffff');
-    fill.addColorStop(1, '#ffd6ea');
-    ctx.fillStyle = fill;
+    ctx.fillStyle = stripes;
     ctx.shadowColor = grade.glow;
     ctx.shadowBlur = size * 0.22;
     ctx.fillText(lineText, 0, 0);
@@ -259,20 +376,155 @@ function paintTitle(ctx, title, subtitle, grade, w, h) {
     y += lineH;
   }
 
-  const sub = subtitle.trim().toUpperCase();
+  // Handwritten subtitle under the title, in a cursive stack (no font
+  // is downloaded: the system cursive face is used, and the slight tilt
+  // keeps the signature feel even where it falls back to a plain face).
+  const sub = (subtitle || '').trim();
   if (sub) {
-    const subSize = Math.max(16, size * 0.24);
-    ctx.font = `${subSize}px Anton, sans-serif`;
-    try { ctx.letterSpacing = `${Math.round(subSize * 0.28)}px`; } catch (e) { /* older canvas: no letter spacing */ }
-    const subY = h - margin * 0.9 - lines.length * lineH - subSize * 1.15;
-    const subW = ctx.measureText(sub).width;
-    ctx.fillStyle = grade.band;
-    const pad = subSize * 0.7;
-    ctx.fillRect(margin, subY - subSize - pad * 0.4, subW + pad * 2, subSize + pad);
-    ctx.fillStyle = '#14081f';
-    ctx.fillText(sub, margin + pad, subY);
-    try { ctx.letterSpacing = '0px'; } catch (e) { /* reset */ }
+    ctx.save();
+    ctx.translate(margin, subY);
+    ctx.rotate(-0.02);
+    ctx.font = `italic ${subSize}px 'Segoe Script', 'Brush Script MT', 'Snell Roundhand', cursive`;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(sub, 0, 0);
+    ctx.restore();
   }
+}
+
+/** A deterministic pseudo-random stream from a seed, for the barcode. */
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+/** The quote bar across the top: five stars, a press quote and VOL. 1. */
+function paintQuoteBar(ctx, grade, w, h) {
+  const barH = Math.round(h * 0.052);
+  ctx.fillStyle = 'rgba(10, 2, 20, 0.8)';
+  ctx.fillRect(0, 0, w, barH);
+  const size = Math.max(13, Math.round(h * 0.021));
+  const margin = w * 0.045;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const cy = barH / 2;
+  ctx.font = `${size}px sans-serif`;
+  ctx.fillStyle = '#ffc46b';
+  ctx.fillText('★★★★★', margin, cy);
+  const starsW = ctx.measureText('★★★★★').width;
+  ctx.font = `italic ${size}px Georgia, serif`;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+  ctx.fillText('“A sunset heist for the ages”', margin + starsW + size * 0.8, cy);
+  const quoteW = ctx.measureText('“A sunset heist for the ages”').width;
+  ctx.font = `${Math.round(size * 0.85)}px Anton, sans-serif`;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillText('— COASTLINE CHRONICLE', margin + starsW + size * 0.8 + quoteW + size * 0.6, cy);
+  ctx.font = `${Math.round(size * 0.95)}px Anton, sans-serif`;
+  ctx.fillStyle = grade.accent;
+  ctx.textAlign = 'right';
+  ctx.fillText('VOL. 1', w - margin, cy);
+}
+
+/** A gold BEST CAST seal, tilted like a sticker, top right. */
+function paintSeal(ctx, grade, w, h) {
+  // Tucked into the top-right corner so its spikes never reach the
+  // top-right panel's role tag: the centre sits almost on the corner,
+  // leaving the tag's full text clear on every poster size.
+  const r = Math.max(26, Math.round(Math.min(w, h) * 0.044));
+  const cx = w - Math.round(w * 0.045) - r * 0.35;
+  const cy = Math.round(h * 0.052) + r * 0.85;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.14);
+  // Starburst edge: short spikes around the rim.
+  ctx.fillStyle = '#d9a441';
+  ctx.beginPath();
+  const spikes = 16;
+  for (let i = 0; i < spikes * 2; i++) {
+    const a = (i / (spikes * 2)) * Math.PI * 2;
+    const rr = i % 2 ? r * 0.98 : r * 1.12;
+    const x = Math.cos(a) * rr;
+    const y = Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffc46b';
+  ctx.fill();
+  ctx.lineWidth = Math.max(2, r * 0.05);
+  ctx.strokeStyle = '#8a5a12';
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = '#4a2c00';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${Math.round(r * 0.34)}px Anton, sans-serif`;
+  ctx.fillText('★', 0, -r * 0.42);
+  ctx.font = `${Math.round(r * 0.30)}px Anton, sans-serif`;
+  ctx.fillText('BEST', 0, -r * 0.02);
+  ctx.fillText('CAST', 0, r * 0.32);
+  ctx.restore();
+}
+
+/** The billing strip at the bottom: credits, COMING SOON and a drawn barcode. */
+function paintBilling(ctx, title, grade, w, h) {
+  const billH = Math.round(h * 0.085);
+  const y0 = h - billH;
+  ctx.fillStyle = '#0a0214';
+  ctx.fillRect(0, y0, w, billH);
+  ctx.fillStyle = grade.band;
+  ctx.fillRect(0, y0, w, Math.max(2, Math.round(h * 0.004)));
+  const margin = w * 0.045;
+  const size = Math.max(10, Math.round(h * 0.0155));
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${size}px Anton, sans-serif`;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.fillText('STARRING THE DRIVER · THE FIXER · THE MECHANIC · THE CAPTAIN · THE RIDER · THE BOSS · THE LOOKOUT', w / 2, y0 + billH * 0.3);
+  ctx.font = `${Math.round(size * 1.15)}px Anton, sans-serif`;
+  ctx.fillStyle = grade.accent;
+  ctx.textAlign = 'left';
+  ctx.fillText('COMING SOON', margin, y0 + billH * 0.72);
+  // A barcode drawn from the title, so the same title always prints the same bars.
+  let seed = 7;
+  for (const ch of title) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const rnd = seeded(seed);
+  const unit = Math.max(1, Math.round(w / 900));
+  const barW = Math.round(w * 0.085);
+  const barH = billH * 0.52;
+  let bx = w - margin - barW;
+  const by = y0 + billH * 0.72 - barH / 2;
+  ctx.fillStyle = '#ffffff';
+  while (bx < w - margin) {
+    const bw = (1 + Math.floor(rnd() * 4)) * unit;
+    const gapB = Math.floor(rnd() * 3) * unit;
+    ctx.fillRect(bx, by, bw, barH);
+    bx += bw + gapB;
+  }
+}
+
+/** A role tag on a cast panel: a dark chip with the role in Anton. */
+function paintRoleTag(ctx, panel, topPad) {
+  const size = Math.max(13, Math.min(30, Math.round(panel.h * 0.14)));
+  ctx.font = `${size}px Anton, sans-serif`;
+  const tw = ctx.measureText(panel.role).width;
+  const padX = Math.round(size * 0.55);
+  const padY = Math.round(size * 0.4);
+  const bx = panel.x + Math.max(6, Math.round(panel.w * 0.025));
+  const by = panel.y + topPad;
+  ctx.fillStyle = 'rgba(10, 2, 20, 0.88)';
+  ctx.fillRect(bx, by, tw + padX * 2, size + padY * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(panel.role, bx + padX, by + padY + size * 0.78);
 }
 
 /** Paint the whole poster onto `canvas` from `state`. */
@@ -291,10 +543,14 @@ export function paintPoster(canvas, state) {
   ctx.fillRect(0, 0, w, h);
 
   const panels = posterPanels(state.layout, w, h);
-  const assignment = panelPhotos(state.layout, state.photos.length);
+  // The cast grid paints the seven character portraits; every other
+  // layout paints the editor's three photo slots.
+  const isCast = state.layout === 'cast';
+  const sourcePhotos = isCast ? (state.cast || []) : state.photos;
+  const assignment = panelPhotos(state.layout, sourcePhotos.length);
   const gap = Math.min(w, h) * 0.012;
   panels.forEach((panel, i) => {
-    const photo = state.photos[assignment[i]];
+    const photo = sourcePhotos[assignment[i]];
     if (photo && photo.img) {
       paintPhoto(ctx, photo.img, panel, photo.zoom || 1, photo.fx ?? 0.5, photo.fy ?? 0.5);
     } else {
@@ -338,7 +594,23 @@ export function paintPoster(canvas, state) {
   ctx.globalCompositeOperation = 'source-over';
   paintVignette(ctx, w, h);
   paintHalftone(ctx, w, h, grade.accent);
-  paintTitle(ctx, state.title, state.subtitle, grade, w, h);
+  // The seal goes under the role tags: its spikes reach into the top-right
+  // panel's corner, and the tag box paints cleanly over them instead of
+  // the seal clipping the tag's last letters. It stays above the quote
+  // bar so its gold is never dimmed by the bar's dark strip.
+  paintQuoteBar(ctx, grade, w, h);
+  paintSeal(ctx, grade, w, h);
+  // Role tags stay crisp on top of the wash: top of each panel, dropped
+  // below the quote bar on the top row.
+  if (isCast) {
+    const quoteH = Math.round(h * 0.052);
+    const edge = Math.round(Math.min(w, h) * 0.02);
+    panels.forEach((panel) => {
+      if (panel.role) paintRoleTag(ctx, panel, panel.y <= edge + 1 ? quoteH + 8 : 8);
+    });
+  }
+  paintBilling(ctx, state.title, grade, w, h);
+  paintTitle(ctx, state.title, state.subtitle, state.tagline || '', grade, w, h);
 }
 
 /** A fresh canvas with the poster rendered at exactly w×h. */

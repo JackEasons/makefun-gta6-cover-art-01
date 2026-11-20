@@ -1,7 +1,12 @@
-// Vice City Cover Studio: a gta6-cover-art-01 entry (Node 22, standard
-// library only). v3 adds a fifth grade (Midnight Vice), a character-led
-// hero sample photo, a halftone title band and two-line titles written
-// as "VICE / CITY", on top of v2's diagonal split and Gold Hour grade.
+// Neon Tide Cover Studio: a gta6-cover-art-01 entry (Node 22, standard
+// library only). v4 adds a cast-grid layout (seven original character
+// portraits with role tags), poster furniture (quote bar, gold BEST CAST
+// seal, billing block with a drawn barcode, COMING SOON), a striped-
+// gradient title grown to about two thirds of the poster width, a
+// letterspaced tagline and a handwritten-style subtitle, and renames the
+// default title to the original "NEON TIDE" — on top of v3's Midnight
+// Vice grade, character-led hero sample, halftone title band and two-line
+// titles written as "NEON / TIDE".
 // files a desktop browser loads offline (app/index.html and its ES modules,
 // the Anton font and the sample photos under app/, no library and no
 // network request). This program hands the entry in: it copies app/ and
@@ -62,4 +67,10 @@ const shotFiles = existsSync(join(outDir, 'screenshots'))
   : [];
 const appFiles = countFiles(join(outDir, 'app'));
 const biggestShot = shotFiles.reduce((m, f) => Math.max(m, statSync(join(outDir, 'screenshots', f)).size), 0);
-console.log(`wrote ${join(outDir, 'dossier.json')} (${dossierBytes} bytes, ${shotFiles.length} screenshots, biggest ${biggestShot} bytes, ${appFiles} app files)`);
+// The cast grid's seven portraits are the samples that matter most: say
+// how many sample photos the run picked up, so a missing portrait shows.
+const sampleDir = join(outDir, 'app', 'samples');
+const sampleFiles = existsSync(sampleDir)
+  ? readdirSync(sampleDir).filter((f) => /\.(png|jpe?g)$/i.test(f))
+  : [];
+console.log(`wrote ${join(outDir, 'dossier.json')} (${dossierBytes} bytes, ${shotFiles.length} screenshots, biggest ${biggestShot} bytes, ${appFiles} app files, ${sampleFiles.length} samples)`);
