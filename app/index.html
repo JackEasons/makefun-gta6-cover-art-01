@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vice City Cover Studio</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header class="masthead">
+  <div>
+    <h1>VICE CITY <span>COVER STUDIO</span></h1>
+    <p>Three photos, one poster. Drag a panel to reframe it, pick a grade, export the cover.</p>
+  </div>
+  <p class="made">100% offline · your photos never leave this browser</p>
+</header>
+<main class="app">
+  <section class="controls" aria-label="Cover controls">
+    <div class="group">
+      <h2>1 · Photos</h2>
+      <p class="hint">Upload your own or pick a sample. Click a panel in the preview to select it, then drag it to reframe.</p>
+      <div id="slots"></div>
+    </div>
+    <div class="group">
+      <h2>2 · Layout</h2>
+      <div id="layouts" class="chips" role="group" aria-label="Layout"></div>
+    </div>
+    <div class="group">
+      <h2>3 · Colour grade</h2>
+      <div id="grades" class="chips" role="group" aria-label="Colour grade"></div>
+    </div>
+    <div class="group">
+      <h2>4 · Caption</h2>
+      <label>Title
+        <input id="title" type="text" maxlength="28" value="VICE NIGHTS">
+      </label>
+      <label>Subtitle
+        <input id="subtitle" type="text" maxlength="48" value="THREE FRAMES, ONE CITY">
+      </label>
+    </div>
+    <div class="group">
+      <h2>5 · Export size</h2>
+      <div id="sizes" class="chips" role="group" aria-label="Export size"></div>
+      <button id="export" type="button">Export PNG</button>
+      <p id="status" role="status"></p>
+    </div>
+    <p class="credit">Lettering: Anton (SIL Open Font License), shipped with the app. Sample photos were made with an image model; no game artwork is used.</p>
+  </section>
+  <section class="stage" aria-label="Cover preview">
+    <canvas id="preview" width="1920" height="1080" aria-label="The cover preview"></canvas>
+  </section>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
