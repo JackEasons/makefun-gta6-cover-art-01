@@ -279,7 +279,7 @@ function wrapCaption(ctx, text, maxWidth) {
 }
 
 /** The bold display lettering: Anton, striped sunset gradient fill, thick dark outline, hard shadow, slight lean. The tagline sits above the title, the handwritten subtitle below it, and the whole block stops above the billing strip. */
-function paintTitle(ctx, title, subtitle, tagline, grade, w, h) {
+function paintTitle(ctx, title, subtitle, tagline, grade, w, h, layout) {
   const billH = Math.round(h * 0.085);
   const margin = w * 0.045;
   const maxW = w - margin * 2;
@@ -288,8 +288,13 @@ function paintTitle(ctx, title, subtitle, tagline, grade, w, h) {
 
   // Grow the type until the widest line spans about seven tenths of the
   // poster, capped so one line never outgrows the band. One-line titles
-  // get the biggest letters; stacked titles grow to the same cap.
-  const sizeCap = Math.round(h * 0.25);
+  // get the biggest letters; stacked titles grow to the same cap — except
+  // in the cast grid on landscape and square posters, where a stacked
+  // title grows so tall its tagline is squeezed between the middle-row
+  // role tags and the title itself: there stacked lines stop at half the
+  // width instead, which leaves the tagline its clear band.
+  const sizeCap = Math.round(h * 0.3);
+  const stackTarget = layout === 'cast' && w >= h ? 0.5 : 0.6;
   let size = Math.round(h * 0.16);
   let lines = [];
   let widest = 0;
@@ -297,7 +302,7 @@ function paintTitle(ctx, title, subtitle, tagline, grade, w, h) {
     ctx.font = `${size}px Anton, sans-serif`;
     lines = wrapCaption(ctx, clean, maxW);
     widest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
-    if (widest >= maxW * 0.72 || (lines.length > 1 && widest >= maxW * 0.5) || size >= sizeCap) break;
+    if (widest >= maxW * 0.72 || (lines.length > 1 && widest >= maxW * stackTarget) || size >= sizeCap) break;
     const next = size + 4;
     ctx.font = `${next}px Anton, sans-serif`;
     const nextWidest = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
@@ -325,7 +330,7 @@ function paintTitle(ctx, title, subtitle, tagline, grade, w, h) {
   // Bottom-up stack: billing strip, handwritten subtitle, title lines, tagline.
   const subY = h - billH - Math.round(margin * 0.45);
   const titleBottom = subY - subSize * 1.5;
-  const tagY = titleBottom - lines.length * lineH - tagSize * 1.4;
+  const tagY = titleBottom - lines.length * lineH - tagSize * 0.4;
 
   // The dark fade behind the block, so the letters read over any photo.
   const fadeTop = tagY - tagSize * 2.4;
@@ -672,7 +677,7 @@ export function paintPoster(canvas, state) {
   paintQuoteBar(ctx, grade, state.grade, w, h);
   paintSeal(ctx, grade, w, h);
   paintBilling(ctx, state.title, grade, w, h);
-  paintTitle(ctx, state.title, state.subtitle, state.tagline || '', grade, w, h);
+  paintTitle(ctx, state.title, state.subtitle, state.tagline || '', grade, w, h, state.layout);
   // Role tags paint last, on top of the title block as well as the wash.
   // Bottom-row tags go to the bottom-right corner on landscape and
   // square posters: their top-left spot sits dead-centre on the title
