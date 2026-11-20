@@ -71,4 +71,5 @@ createServer((request, response) => {
   createReadStream(file).pipe(response);
 }).listen(port, '127.0.0.1', () => {
   console.log(`app/ is on http://localhost:${port}`);
+  console.log(`try the editor at http://localhost:${port}/ and a cover at http://localhost:${port}/?shot=cover`);
 });

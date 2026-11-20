@@ -4,7 +4,7 @@
 [![rank](https://make.fun/badge/gta6-cover-art-01/JackEasons/makefun-gta6-cover-art-01/rank.svg)](https://make.fun/bounty/gta6-cover-art-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 [![reward](https://make.fun/badge/gta6-cover-art-01/JackEasons/makefun-gta6-cover-art-01/reward.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 
-Vice City Cover Studio: an offline web app that turns up to three of your photos and a caption into a multi-panel GTA-style poster — triptych, 2×2 grid, hero + strip or a single full-bleed photo — with bold Anton display lettering and Vice Sunset, Neon Nights or Palm Dusk colour grades, exported as a PNG in 1080×1080, 1080×1350 or 1920×1080. Drag any panel to reframe its photo, zoom each photo, or fill every panel with one photo. Your photos never leave the browser.
+Vice City Cover Studio: an offline web app that turns up to three of your photos and a caption into a multi-panel GTA-style poster — triptych, 2×2 grid, hero + strip, diagonal split or a single full-bleed photo — with bold Anton display lettering and Vice Sunset, Neon Nights, Palm Dusk or Gold Hour colour grades, exported as a PNG in 1080×1080, 1080×1350 or 1920×1080. Drag any panel to reframe its photo, zoom each photo, or fill every panel with one photo. Your photos never leave the browser.
 
 ## Run it
 

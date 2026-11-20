@@ -29,12 +29,21 @@ export const GRADES = {
     accent: '#8ef5e0',
     glow: 'rgba(150, 90, 255, 0.50)',
   },
+  gold: {
+    label: 'Gold Hour',
+    washTop: 'rgba(255, 190, 80, 0.16)',
+    washBottom: 'rgba(0, 140, 150, 0.38)',
+    band: '#ffb347',
+    accent: '#2dd4c4',
+    glow: 'rgba(255, 180, 60, 0.55)',
+  },
 };
 
 export const LAYOUTS = {
   triptych: { label: 'Triptych · 3 panels', panels: 3 },
   grid: { label: 'Grid · 2 × 2', panels: 4 },
   hero: { label: 'Hero + strip', panels: 3 },
+  diagonal: { label: 'Diagonal split · 2 panels', panels: 2 },
   single: { label: 'Single photo', panels: 1 },
 };
 
@@ -74,6 +83,23 @@ export function posterPanels(layout, w, h) {
       { x: edge + heroW + gap, y: edge + sideH + gap, w: sideW, h: sideH },
     ];
   }
+  if (layout === 'diagonal') {
+    // Two quadrilaterals split by one rising diagonal: the top panel
+    // holds the sky, the bottom one the street. Each panel keeps its
+    // bounding box in x/y/w/h (for photo cover-fit and hit-testing) and
+    // its true shape in poly (for clipping and the white seam).
+    const cutTop = edge + innerH * 0.30;
+    const cutBottom = edge + innerH * 0.70;
+    const top = {
+      x: edge, y: edge, w: innerW, h: cutBottom - edge,
+      poly: [[edge, edge], [edge + innerW, edge], [edge + innerW, cutTop], [edge, cutBottom]],
+    };
+    const bottom = {
+      x: edge, y: cutTop, w: innerW, h: edge + innerH - cutTop,
+      poly: [[edge, cutBottom], [edge + innerW, cutTop], [edge + innerW, edge + innerH], [edge, edge + innerH]],
+    };
+    return [top, bottom];
+  }
   return [{ x: edge, y: edge, w: innerW, h: innerH }];
 }
 
@@ -96,7 +122,12 @@ function paintPhoto(ctx, img, panel, zoom, fx, fy) {
   const dy = panel.y + (panel.h - dh) * fy;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(panel.x, panel.y, panel.w, panel.h);
+  if (panel.poly) {
+    panel.poly.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
+    ctx.closePath();
+  } else {
+    ctx.rect(panel.x, panel.y, panel.w, panel.h);
+  }
   ctx.clip();
   ctx.drawImage(img, dx, dy, dw, dh);
   ctx.restore();
@@ -224,8 +255,27 @@ export function paintPoster(canvas, state) {
     }
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = Math.max(2, gap * 0.35);
-    ctx.strokeRect(panel.x, panel.y, panel.w, panel.h);
+    if (panel.poly) {
+      ctx.beginPath();
+      panel.poly.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
+      ctx.closePath();
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(panel.x, panel.y, panel.w, panel.h);
+    }
   });
+
+  // The diagonal split gets its slash redrawn once, thicker, so the cut
+  // reads as one bold design line instead of two panel edges meeting.
+  if (state.layout === 'diagonal' && panels[0].poly) {
+    const seam = panels[0].poly;
+    ctx.beginPath();
+    ctx.moveTo(seam[3][0], seam[3][1]);
+    ctx.lineTo(seam[2][0], seam[2][1]);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
+    ctx.lineWidth = Math.max(3, gap * 1.1);
+    ctx.stroke();
+  }
 
   const wash = ctx.createLinearGradient(0, 0, w * 0.25, h);
   wash.addColorStop(0, grade.washTop);

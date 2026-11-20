@@ -1,5 +1,6 @@
 // Vice City Cover Studio: a gta6-cover-art-01 entry (Node 22, standard
-// library only). The app is this directory's app/ folder: plain static
+// library only). v2 adds a fifth layout (diagonal split, clipped to
+// polygons in the poster engine) and a fourth grade (Gold Hour).
 // files a desktop browser loads offline (app/index.html and its ES modules,
 // the Anton font and the sample photos under app/, no library and no
 // network request). This program hands the entry in: it copies app/ and
@@ -10,7 +11,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-app.ts';
@@ -40,3 +41,12 @@ writeFileSync(
     app_path_max_bytes: 1000,
   }),
 );
+
+// A short build summary on stdout, so a run's result is visible without
+// opening the dossier: the dossier size is the one number that moves
+// when the app or the screenshots change.
+const dossierBytes = statSync(join(outDir, 'dossier.json')).size;
+const shotFiles = existsSync(join(outDir, 'screenshots'))
+  ? readdirSync(join(outDir, 'screenshots')).filter((f) => /\.(png|jpe?g)$/i.test(f))
+  : [];
+console.log(`wrote ${join(outDir, 'dossier.json')} (${dossierBytes} bytes, ${shotFiles.length} screenshots)`);

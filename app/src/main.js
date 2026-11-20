@@ -203,6 +203,7 @@ function buildPickers() {
     btn.type = 'button';
     btn.className = `chip${state.layout === key ? ' on' : ''}`;
     btn.textContent = def.label;
+    if (key === 'diagonal') btn.dataset.new = '1';
     btn.addEventListener('click', () => {
       state.layout = key;
       buildPickers();
@@ -217,6 +218,7 @@ function buildPickers() {
     btn.className = `chip${state.grade === key ? ' on' : ''}`;
     btn.style.setProperty('--swatch', def.band);
     btn.textContent = def.label;
+    if (key === 'gold') btn.dataset.new = '1';
     btn.addEventListener('click', () => {
       state.grade = key;
       buildPickers();
@@ -239,6 +241,17 @@ function buildPickers() {
   }
 }
 
+/** Ray-casting point-in-polygon test, for the diagonal layout's panels. */
+function pointInPoly(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
 /** Which panel (and photo) sits under a point on the preview canvas. */
 function panelAt(clientX, clientY) {
   const rect = preview.getBoundingClientRect();
@@ -248,7 +261,10 @@ function panelAt(clientX, clientY) {
   const assignment = panelPhotos(state.layout, state.photos.length);
   for (let i = 0; i < panels.length; i++) {
     const p = panels[i];
-    if (x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h) {
+    const inside = p.poly
+      ? pointInPoly(x, y, p.poly)
+      : (x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h);
+    if (inside) {
       return { panel: p, photoIndex: assignment[i], x, y };
     }
   }
@@ -320,14 +336,14 @@ async function boot() {
     await document.fonts.load('100px Anton');
   } catch (e) { /* lettering falls back to a heavy sans */ }
   if (shot) {
-    await runShot(shot, query, async (files, text, sub, layout, grade, size) => {
+    await runShot(shot, query, async (files, text, sub, layout, grade, size, zoom) => {
       state.layout = layout;
       state.grade = grade;
       state.title = text;
       state.subtitle = sub;
       state.size = size;
       for (let i = 0; i < files.length; i++) {
-        state.photos[i] = { img: await loadImage(`samples/${files[i]}`), name: files[i], zoom: 1, fx: 0.5, fy: 0.5 };
+        state.photos[i] = { img: await loadImage(`samples/${files[i]}`), name: files[i], zoom: zoom || 1, fx: 0.5, fy: 0.5 };
       }
       buildPickers();
       buildSlots();
